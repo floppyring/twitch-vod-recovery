@@ -1,0 +1,4 @@
+{
+  "concurrencyLimit": 20,
+  "requestDelayMs": 200
+}
