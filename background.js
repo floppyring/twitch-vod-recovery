@@ -1,4 +1,10 @@
-const VOD_DOMAINS = ["https://d2nvs31859zcd8.cloudfront.net/"];
+/**
+ * Loads configuration from config.json
+ */
+async function loadConfig() {
+    const response = await fetch(chrome.runtime.getURL('config.json'));
+    return await response.json();
+}
 
 async function calculateHash(name, id, ts) {
     const input = `${name}_${id}_${ts}`;
@@ -12,9 +18,7 @@ async function checkUrl(url) {
     try {
         const response = await fetch(url, { method: 'HEAD' });
         return response.ok ? url : null;
-    } catch (e) {
-        return null;
-    }
+    } catch (e) { return null; }
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -22,35 +26,34 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const { username, id, epoch } = request.data;
 
         (async () => {
+            // LOAD CONFIG DYNAMICALLY
+            const config = await loadConfig();
+            const { batchSize, driftStart, driftEnd, domains } = config;
+
             let candidateUrls = [];
-            // ORIGINAL LOGIC: -30 to +60 drift
-            for (let s = -30; s < 60; s++) {
+            // Use drift values from JSON
+            for (let s = driftStart; s < driftEnd; s++) {
                 const ts = epoch + s;
                 const hash = await calculateHash(username, id, ts);
                 const path = `${hash}_${username}_${id}_${ts}/chunked/index-dvr.m3u8`;
-
-                VOD_DOMAINS.forEach(domain => {
+                
+                domains.forEach(domain => {
                     const cleanDomain = domain.endsWith('/') ? domain.slice(0, -1) : domain;
                     candidateUrls.push(`${cleanDomain}/${path}`);
                 });
             }
 
             const total = candidateUrls.length;
-            const batchSize = 20; 
-
             for (let i = 0; i < total; i += batchSize) {
                 const batch = candidateUrls.slice(i, i + batchSize);
-                
-                // Fast parallel check for the current batch
                 const results = await Promise.all(batch.map(checkUrl));
                 
-                // Report any valid URLs found in this batch
                 results.forEach(validUrl => {
                     chrome.runtime.sendMessage({
                         action: "updateUI",
                         current: Math.min(i + batchSize, total),
                         total: total,
-                        foundUrl: validUrl // null if not found
+                        foundUrl: validUrl
                     });
                 });
             }

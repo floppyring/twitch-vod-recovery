@@ -1,4 +1,8 @@
 {
-  "concurrencyLimit": 20,
-  "requestDelayMs": 200
+  "batchSize": 20,
+  "driftStart": -30,
+  "driftEnd": 60,
+  "domains": [
+    "https://d2nvs31859zcd8.cloudfront.net/"
+  ]
 }
