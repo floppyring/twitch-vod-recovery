@@ -1,12 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <style>body { width: 250px; padding: 10px; font-family: sans-serif; }</style>
+  <style>
+    body { width: 350px; padding: 10px; font-family: sans-serif; }
+    #results { font-size: 12px; }
+    #link-container { 
+      height: 300px; 
+      overflow-y: auto; 
+      border: 1px solid #ccc; 
+      padding: 5px;
+      margin-top: 10px;
+    }
+    a { display: block; margin-bottom: 5px; color: blue; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
 </head>
 <body>
-  <h3>VOD Info</h3>
-  <button id="runBtn">Get VOD Info</button>
-  <div id="results" style="margin-top: 10px;">Ready.</div>
+  <h3>Twitch VOD Recover</h3>
+  <button id="runBtn">Generate URLs</button>
+  <div id="results"></div>
+  <div id="link-container"></div>
   <script src="popup.js"></script>
 </body>
 </html>
