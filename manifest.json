@@ -1,14 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "VOD Recovery Tool",
+  "name": "Twitch VOD Recovery Extension",
   "version": "1.0",
   "permissions": [
     "scripting",
     "activeTab",
     "declarativeNetRequest"
-  ],
-  "host_permissions": [
-    "https://d2nvs31859zcd8.cloudfront.net/*"
   ],
   "background": {
     "service_worker": "background.js"

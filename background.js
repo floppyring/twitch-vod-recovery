@@ -11,13 +11,13 @@ async function loadConfigAndDomains() {
         const domainsText = await domainsRes.text();
         const domains = domainsText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
         return {
-            batchSize: config.batchSize || 20,
+            batchSize: config.batchSize || 100,
             driftStart: config.driftStart || -30,
             driftEnd: config.driftEnd || 60,
             domains: domains.length > 0 ? domains : ["https://d2nvs31859zcd8.cloudfront.net/"]
         };
     } catch (e) {
-        return { batchSize: 20, driftStart: -30, driftEnd: 60, domains: ["https://d2nvs31859zcd8.cloudfront.net/"] };
+        return { batchSize: 100, driftStart: -30, driftEnd: 60, domains: ["https://d2nvs31859zcd8.cloudfront.net/"] };
     }
 }
 
