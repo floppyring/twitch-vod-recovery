@@ -1,15 +1,5 @@
-let scanState = {
-    isScanning: false,
-    isPaused: false,
-    username: "",
-    id: "",
-    epoch: "",
-    candidateUrls: [],
-    currentIndex: 0,
-    batchSize: 20,
-    foundUrl: null,
-    readableTime: ""
-};
+// Map to store states: Key = TabID, Value = ScanState object
+let tabStates = {};
 
 async function loadConfigAndDomains() {
     try {
@@ -45,48 +35,57 @@ async function checkUrl(url) {
     } catch (e) { return null; }
 }
 
-async function processScan() {
-    if (!scanState.isScanning || scanState.isPaused || scanState.foundUrl) return;
+async function processScan(tabId) {
+    let state = tabStates[tabId];
+    if (!state || !state.isScanning || state.isPaused || state.foundUrl) return;
 
-    while (scanState.currentIndex < scanState.candidateUrls.length && scanState.isScanning && !scanState.isPaused) {
-        const batch = scanState.candidateUrls.slice(scanState.currentIndex, scanState.currentIndex + scanState.batchSize);
+    while (state.currentIndex < state.candidateUrls.length && state.isScanning && !state.isPaused) {
+        const batch = state.candidateUrls.slice(state.currentIndex, state.currentIndex + state.batchSize);
         const results = await Promise.all(batch.map(checkUrl));
         
-        scanState.currentIndex += scanState.batchSize;
+        state.currentIndex += state.batchSize;
         const validUrl = results.find(url => url !== null);
         
         if (validUrl) {
-            scanState.foundUrl = validUrl;
-            scanState.isScanning = false;
-            broadcastStatus();
+            state.foundUrl = validUrl;
+            state.isScanning = false;
+            broadcastStatus(tabId);
             return;
         }
-        broadcastStatus();
+        broadcastStatus(tabId);
     }
 
-    if (scanState.currentIndex >= scanState.candidateUrls.length) {
-        scanState.isScanning = false;
-        broadcastStatus();
+    if (state.currentIndex >= state.candidateUrls.length) {
+        state.isScanning = false;
+        broadcastStatus(tabId);
     }
 }
 
-function broadcastStatus() {
+function broadcastStatus(tabId) {
+    const state = tabStates[tabId];
+    if (!state) return;
+
     chrome.runtime.sendMessage({
         action: "updateUI",
+        tabId: tabId,
         state: {
-            isScanning: scanState.isScanning,
-            isPaused: scanState.isPaused,
-            current: scanState.currentIndex,
-            total: scanState.candidateUrls.length,
-            foundUrl: scanState.foundUrl,
-            username: scanState.username,
-            id: scanState.id,
-            readableTime: scanState.readableTime
+            // Add defaults here to prevent "undefined" in the UI
+            isScanning: state.isScanning || false,
+            isPaused: state.isPaused || false,
+            current: state.currentIndex || 0,
+            total: state.candidateUrls?.length || 0,
+            foundUrl: state.foundUrl || null,
+            username: state.username || "",
+            id: state.id || "",
+            readableTime: state.readableTime || ""
         }
     }).catch(() => {});
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    const tabId = request.tabId || sender?.tab?.id;
+    if (!tabId) return;
+
     if (request.action === "startScan") {
         const { username, id, epoch, readableTime } = request.data;
         
@@ -106,23 +105,45 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 });
             }
 
-            // Persistence setup: Standard first, then Muted
-            scanState = {
+            tabStates[tabId] = {
                 isScanning: true,
                 isPaused: false,
-                username, id, epoch, readableTime,
+                username, 
+                id, 
+                epoch, 
+                readableTime,
                 candidateUrls: [...standardUrls, ...mutedUrls],
                 currentIndex: 0,
                 batchSize: config.batchSize,
                 foundUrl: null
             };
 
-            broadcastStatus();
-            await processScan();
+            broadcastStatus(tabId);
+            await processScan(tabId);
         })();
     }
-    if (request.action === "pauseScan") { scanState.isPaused = true; broadcastStatus(); }
-    if (request.action === "resumeScan") { scanState.isPaused = false; broadcastStatus(); processScan(); }
-    if (request.action === "getBackgroundState") { broadcastStatus(); }
+    
+    if (request.action === "pauseScan") { 
+        if (tabStates[tabId]) tabStates[tabId].isPaused = true; 
+        broadcastStatus(tabId); 
+    }
+    
+    if (request.action === "resumeScan") { 
+        if (tabStates[tabId]) {
+            tabStates[tabId].isPaused = false; 
+            broadcastStatus(tabId); 
+            processScan(tabId); 
+        }
+    }
+    
+    if (request.action === "getBackgroundState") { 
+        broadcastStatus(tabId); 
+    }
+
     return true; 
+});
+
+// Optional: Clean up memory when a tab is closed
+chrome.tabs.onRemoved.addListener((tabId) => {
+    delete tabStates[tabId];
 });
