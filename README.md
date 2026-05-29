@@ -5,6 +5,10 @@ This extension automates the discovery of missing or unlisted Twitch VOD chunks 
 ## ⚠️ Important Compatibility Note
 **This extension currently only supports data sourced from [StreamsCharts](https://streamscharts.com/).** The extension relies on specific DOM structures (such as `<time>` elements) found on StreamsCharts VOD pages to accurately parse the stream start time and metadata required to generate the correct VOD hash.
 
+### Limitations & Experimental Features
+* **Quality Selection:** The extension currently only looks for default quality segments. It does **not** yet search for different quality levels (e.g., 1080p, 720p, 480p, etc.).
+* **Muted Segments:** While the logic is implemented to scan `index-muted.m3u8` files, this feature is **experimental and has not been fully tested**. Results may vary based on how Twitch handles muted content availability on the CDN.
+
 ## 🛠️ Installation Guide (Developer Mode)
 
 Since this is a custom-built extension, you must load it manually into Chrome:
