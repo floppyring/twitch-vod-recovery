@@ -20,6 +20,13 @@ Since this is a custom-built extension, you must load it manually into Chrome:
 5. **Select Folder:** Select the folder where you saved your project files.
 6. **Refresh:** The extension will now appear in your browser toolbar. If you make any changes to the code, simply click the **Refresh/Reload** icon on the extension card in the `chrome://extensions/` page to apply updates.
 
+## 🛠️ Usage
+1. **Navigate to the VOD page:** Open the specific streamer's VOD page on [StreamsCharts](https://streamscharts.com/) (e.g., `streamscharts.com/channels/streamername/streams/vodid`) or [TwitchTracker](https://twitchtracker.com/) (e.g., `twitchtracker.com/streamername/streams/vodid`).
+2. **Open the Extension:** Click the extension icon in your browser toolbar to open the popup.
+3. **Start Scan:** Click the **"START NEW SCAN"** button. The extension will parse the page for the necessary timestamp and VOD ID.
+4. **Monitor Progress:** The progress bar will update in real-time as the extension cycles through candidate URLs.
+5. **Retrieve Results:** If a valid VOD chunk is found, the scan will stop automatically, and the working URL will be displayed. Use the **"COPY"** button to save the link for use in video players or download tools.
+6. **Management:** You can **PAUSE** or **RESUME** a scan at any time. The state is tab-specific, meaning you can scan multiple VODs in different tabs simultaneously.
 ---
 
 ## Configuration Guide: Batch Size
