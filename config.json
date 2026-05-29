@@ -3,6 +3,7 @@
   "driftStart": -30,
   "driftEnd": 60,
   "domains": [
+    "https://d1m7jfoe9zdc1j.cloudfront.net/",
     "https://d2nvs31859zcd8.cloudfront.net/"
   ]
 }
