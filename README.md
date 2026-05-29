@@ -3,7 +3,7 @@
 This extension automates the discovery of missing or unlisted Twitch VOD chunks by scanning CDN domains for valid `.m3u8` index files.
 
 ## ⚠️ Important Compatibility Note
-**This extension currently only supports data sourced from [StreamsCharts](https://streamscharts.com/).** The extension relies on specific DOM structures (such as `<time>` elements) found on StreamsCharts VOD pages to accurately parse the stream start time and metadata required to generate the correct VOD hash.
+**This extension currently only supports data sourced from [StreamsCharts](https://streamscharts.com/) and [TwitchTracker](https://twitchtracker.com/).** The extension relies on specific DOM structures (such as `<time>` elements) to accurately parse the stream start time and metadata required to generate the correct VOD hash.
 
 ### Limitations & Experimental Features
 * **Quality Selection:** The extension currently only looks for default quality segments. It does **not** yet search for different quality levels (e.g., 1080p, 720p, 480p, etc.).

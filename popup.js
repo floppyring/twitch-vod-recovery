@@ -7,13 +7,58 @@ const progressContainer = document.getElementById('progress-container');
 const foundContainer = document.getElementById('found-container');
 const metadataDiv = document.getElementById('metadata');
 
-// Ensure button is never disabled indefinitely
+// Define extraction strategies
+const extractors = {
+    "streamscharts.com": () => {
+        const usernameEl = document.querySelector('h1')?.innerText.split('/')[0].trim().toLowerCase();
+        const id = window.location.href.split('/').pop().split('?')[0];
+        const timeEl = document.querySelector('time[datetime]');
+        if (!timeEl) return { error: "No timestamp found." };
+        
+        const rawDateTime = timeEl.getAttribute('datetime');
+        const [datePart, timePart] = rawDateTime.split(' ');
+        const [d, m, y] = datePart.split('-');
+        const epoch = Math.floor(new Date(`${y}-${m}-${d}T${timePart}:00Z`).getTime() / 1000);
+        const readableTime = new Date(epoch * 1000).toLocaleString();
+        
+        return { 
+            username: usernameEl,
+            id: id,
+            epoch: epoch,
+            readableTime: readableTime
+        };
+    },
+    "twitchtracker.com": () => {
+        const username = window.location.pathname.split('/')[1];
+        const vodId = window.location.href.split('/').pop().split('?')[0];
+        
+        // Target the specific element containing the date
+        const dateEl = document.querySelector('.stream-timestamp-dt');
+        if (!dateEl) return { error: "Could not find .stream-timestamp-dt" };
+
+        // 1. Clean the date string: "Thu, May 28, 00:16" -> "May 28 00:16 2026"
+        const dateText = dateEl.innerText.trim();
+        const cleanDateText = dateText.split(', ').slice(1).join(' ') + " " + new Date().getFullYear();
+        
+        const rawDate = new Date(cleanDateText);
+        if (isNaN(rawDate.getTime())) return { error: "Invalid date parsing" };
+
+        const adjustedTime = rawDate.getTime();
+        const epoch = Math.floor(adjustedTime / 1000);
+        const readableTime = new Date(epoch * 1000).toLocaleString();
+
+        return {
+            username: username.toLowerCase(),
+            id: vodId,
+            epoch: epoch,
+            readableTime: readableTime
+        };
+    }
+};
+
 function updateButtonUI(state) {
     currentScanEngineState = state;
-    
-    // Always enable unless we are in the middle of a "Parsing" phase
     runBtn.disabled = false; 
-
     if (state === "SCANNING") {
         runBtn.innerText = "PAUSE SCAN";
         runBtn.style.background = "#ff9800";
@@ -26,7 +71,6 @@ function updateButtonUI(state) {
     }
 }
 
-// Initialize: Get current tab and then ask for state
 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     currentTabId = tabs[0].id;
     chrome.runtime.sendMessage({ action: "getBackgroundState", tabId: currentTabId });
@@ -34,45 +78,49 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
 
 runBtn.addEventListener('click', async () => {
     if (currentScanEngineState === "IDLE") {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const domain = new URL(tab.url).hostname.replace('www.', '');
+        const extractorFunc = extractors[domain];
+
+        if (!extractorFunc) {
+            foundContainer.innerHTML = "<small style='color:red;'>Site not supported.</small>";
+            return;
+        }
+
         runBtn.disabled = true;
         foundContainer.innerHTML = "<small style='color: #999;'>Parsing DOM...</small>";
 
         chrome.scripting.executeScript({
             target: { tabId: currentTabId },
-            function: () => {
-                const timeEl = document.querySelector('time[datetime]');
-                if (!timeEl) return { error: "No timestamp found." };
-                const rawDateTime = timeEl.getAttribute('datetime');
-                const [datePart, timePart] = rawDateTime.split(' ');
-                const [d, m, y] = datePart.split('-');
-                const epoch = Math.floor(new Date(`${y}-${m}-${d}T${timePart}:00Z`).getTime() / 1000);
-                return { 
-                    username: document.querySelector('h1')?.innerText.split('/')[0].trim().toLowerCase(),
-                    id: window.location.href.split('/').pop().split('?')[0],
-                    epoch: epoch,
-                    readableTime: rawDateTime
-                };
-            }
+            func: extractorFunc
         }, (results) => {
+            // 1. Check if scripting even returned a result
+            if (!results || !results[0] || !results[0].result) {
+                foundContainer.innerHTML = "<small style='color:red;'>Failed to extract data: No result.</small>";
+                runBtn.disabled = false;
+                return;
+            }
+
             const data = results[0]?.result;
-            if (data?.error) {
+
+            // 2. Check for our custom error messages
+            if (data.error) {
+                console.error("Extraction error:", data.error);
                 foundContainer.innerHTML = `<small style='color:red;'>${data.error}</small>`;
                 runBtn.disabled = false;
                 return;
             }
+
             chrome.runtime.sendMessage({ action: "startScan", data, tabId: currentTabId });
         });
-    } 
-    else if (currentScanEngineState === "SCANNING") {
+    } else if (currentScanEngineState === "SCANNING") {
         chrome.runtime.sendMessage({ action: "pauseScan", tabId: currentTabId });
-    } 
-    else if (currentScanEngineState === "PAUSED") {
+    } else if (currentScanEngineState === "PAUSED") {
         chrome.runtime.sendMessage({ action: "resumeScan", tabId: currentTabId });
     }
 });
 
 chrome.runtime.onMessage.addListener((message) => {
-    // Only update the UI if the message is for the tab the user is looking at
     if (message.action === "updateUI" && message.tabId === currentTabId) {
         const { isScanning, isPaused, current, total, foundUrl, username, id, readableTime } = message.state;
 
@@ -83,31 +131,20 @@ chrome.runtime.onMessage.addListener((message) => {
                 <div><span class="meta-label">Start Time:</span> ${readableTime}</div>
             `;
         }
-
         if (total > 0) {
             progressContainer.style.display = 'block';
             progressBar.style.width = Math.floor((current / total) * 100) + "%";
         }
-
         if (isScanning && !isPaused) {
             updateButtonUI("SCANNING");
-            
-            // Only show "Scanning (x/y)" if total is actually a number
-            if (!foundUrl && total > 0) {
-                foundContainer.innerHTML = `<small>Scanning (${current} / ${total})...</small>`;
-            } else if (!foundUrl) {
-                foundContainer.innerHTML = `<small>Initializing scan...</small>`;
-            }
-        }
-        else if (isScanning && isPaused) {
+            if (!foundUrl && total > 0) foundContainer.innerHTML = `<small>Scanning (${current} / ${total})...</small>`;
+            else if (!foundUrl) foundContainer.innerHTML = `<small>Initializing scan...</small>`;
+        } else if (isScanning && isPaused) {
             updateButtonUI("PAUSED");
             if (!foundUrl) foundContainer.innerHTML = `<small style='color: #ff9800;'>Scan Paused</small>`;
-        } 
-        else {
+        } else {
             updateButtonUI("IDLE");
-            if (current >= total && total > 0 && !foundUrl) {
-                foundContainer.innerHTML = "<small style='color:red;'>No VOD found.</small>";
-            }
+            if (current >= total && total > 0 && !foundUrl) foundContainer.innerHTML = "<small style='color:red;'>No VOD found.</small>";
         }
 
         if (foundUrl && !document.getElementById('vod-link-display')) {
