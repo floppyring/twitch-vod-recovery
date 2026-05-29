@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "responseHeaders": [
+        { "header": "access-control-allow-origin", "operation": "set", "value": "*" }
+      ]
+    },
+    "condition": {
+      "urlFilter": "*d2nvs31859zcd8.cloudfront.net*",
+      "resourceTypes": ["xmlhttprequest"]
+    }
+  }
+]
