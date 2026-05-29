@@ -1,3 +1,30 @@
+// Default values in case config.json or domains.txt fail to load
+const VOD_DOMAINS = [
+  "https://vod-secure.twitch.tv/",
+  "https://vod-metro.twitch.tv/",
+  "https://vod-pop-secure.twitch.tv/",
+  "https://d2e2de1etea730.cloudfront.net/",
+  "https://dqrpb9wgowsf5.cloudfront.net/",
+  "https://ds0h3roq6wcgc.cloudfront.net/",
+  "https://d2nvs31859zcd8.cloudfront.net/",
+  "https://d2aba1wr3818hz.cloudfront.net/",
+  "https://d3c27h4odz752x.cloudfront.net/",
+  "https://dgeft87wbj63p.cloudfront.net/",
+  "https://d1m7jfoe9zdc1j.cloudfront.net/",
+  "https://d3vd9lfkzbru3h.cloudfront.net/",
+  "https://d2vjef5jvl6bfs.cloudfront.net/",
+  "https://d1ymi26ma8va5x.cloudfront.net/",
+  "https://d1mhjrowxxagfy.cloudfront.net/",
+  "https://ddacn6pr5v0tl.cloudfront.net/",
+  "https://d3aqoihi2n8ty8.cloudfront.net/",
+  "https://d3fi1amfgojobc.cloudfront.net/",
+  "https://d3stzm2eumvgb4.cloudfront.net/",
+  "https://d2vi6trrdongqn.cloudfront.net/"
+];
+const DEFAULT_BATCH_SIZE = 100;
+const DEFAULT_DRIFT_START = -30;
+const DEFAULT_DRIFT_END = 60;
+
 // Map to store states: Key = TabID, Value = ScanState object
 let tabStates = {};
 
@@ -11,13 +38,13 @@ async function loadConfigAndDomains() {
         const domainsText = await domainsRes.text();
         const domains = domainsText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
         return {
-            batchSize: config.batchSize || 100,
-            driftStart: config.driftStart || -30,
-            driftEnd: config.driftEnd || 60,
-            domains: domains.length > 0 ? domains : ["https://d2nvs31859zcd8.cloudfront.net/"]
+            batchSize: config.batchSize || DEFAULT_BATCH_SIZE,
+            driftStart: config.driftStart || DEFAULT_DRIFT_START,
+            driftEnd: config.driftEnd || DEFAULT_DRIFT_END,
+            domains: domains.length > 0 ? domains : VOD_DOMAINS
         };
     } catch (e) {
-        return { batchSize: 100, driftStart: -30, driftEnd: 60, domains: ["https://d2nvs31859zcd8.cloudfront.net/"] };
+        return { batchSize: DEFAULT_BATCH_SIZE, driftStart: DEFAULT_DRIFT_START, driftEnd: DEFAULT_DRIFT_END, domains: VOD_DOMAINS };
     }
 }
 
