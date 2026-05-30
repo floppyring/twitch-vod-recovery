@@ -2,39 +2,87 @@
 <html>
 <head>
   <style>
-    body { width: 320px; padding: 12px; font-family: sans-serif; overflow-x: hidden; }
-    #progress-container { width: 100%; height: 8px; background: #eee; margin: 10px 0; border-radius: 4px; overflow: hidden; display: none; }
-    #progress-bar { width: 0%; height: 100%; background: #4caf50; transition: width 0.2s; }
+    body { width: 320px; padding: 12px; font-family: -apple-system, sans-serif; background: #fff; display: flex; flex-direction: column; }
+    h3 { margin: 0 0 10px 0; font-size: 14px; color: #333; font-weight: 800; letter-spacing: -0.5px; }
     
-    #metadata { font-size: 11px; color: #444; margin-bottom: 10px; line-height: 1.4; }
-    .meta-label { font-weight: bold; color: #777; width: 70px; display: inline-block; }
+    /* Action Area */
+    .controls { margin-bottom: 12px; }
+    button#runBtn { 
+      width: 100%; cursor: pointer; padding: 10px; font-weight: bold; 
+      border: 1px solid #ccc; border-radius: 4px; background: #fdfdfd; 
+      transition: all 0.1s;
+    }
+    button#runBtn:hover { background: #f0f0f0; }
+    
+    #progress-container { width: 100%; height: 4px; background: #eee; margin-top: 8px; border-radius: 2px; overflow: hidden; display: none; }
+    #progress-bar { width: 0%; height: 100%; background: #1a73e8; transition: width 0.2s; }
 
-    #found-container { margin-top: 10px; padding: 8px 0; border-top: 1px solid #eee; display: flex; flex-direction: column; }
-    .link-row { display: flex; align-items: center; gap: 8px; background: #f9f9f9; padding: 8px; border-radius: 4px; border: 1px solid #e0e0e0; }
-    #vod-link-display { font-size: 11px; color: #1a73e8; text-decoration: none; word-break: break-all; cursor: pointer; flex-grow: 1; font-weight: bold; }
-    #vod-link-display:hover { text-decoration: underline; }
-    
-    .copy-icon-btn { background: #333; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 10px; cursor: pointer; white-space: nowrap; font-weight: bold; }
+    /* Refined Metadata - Small and Standout */
+    #metadata { 
+      font-size: 10.5px; 
+      color: #444; 
+      background: #f0f0f0; /* Concrete Grey */
+      margin-bottom: 12px; 
+      padding: 8px 10px; 
+      border-radius: 4px;
+      line-height: 1.5;
+      border: 1px solid #e5e5e5;
+    }
+    .meta-label { 
+      font-weight: 700; 
+      width: 70px; 
+      display: inline-block; 
+      color: #777; 
+      text-transform: uppercase;
+      font-size: 9px;
+    }
+
+    /* Results Area */
+    #found-container { 
+      max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; 
+    }
+    .link-row { 
+        display: flex; align-items: center; gap: 8px; background: #f9f9f9; 
+        padding: 8px 10px; border-radius: 4px; border: 1px solid #eee; 
+    }
+    .vod-link-display-item { 
+        font-size: 11px; color: #1a73e8; word-break: break-all; 
+        cursor: pointer; flex-grow: 1; font-weight: 600; 
+    }
+    .copy-icon-btn { 
+        background: #333; color: white; border: none; border-radius: 4px; 
+        padding: 5px 8px; font-size: 10px; cursor: pointer; font-weight: bold;
+    }
     .copy-icon-btn:hover { background: #000; }
 
-    #copy-toast { position: fixed; bottom: -40px; left: 0; right: 0; background: #2e7d32; color: white; text-align: center; padding: 8px; font-size: 12px; transition: bottom 0.3s; z-index: 100; }
+    #copy-toast { 
+        position: fixed; bottom: -40px; left: 0; right: 0; background: #2e7d32; 
+        color: white; text-align: center; padding: 8px; font-size: 12px; 
+        transition: bottom 0.3s; z-index: 100;
+    }
     #copy-toast.show { bottom: 0; }
-    
-    button#runBtn { width: 100%; cursor: pointer; padding: 10px; font-weight: bold; border: 1px solid #ccc; border-radius: 4px; transition: background 0.15s; }
+
+    /* Scrollbar */
+    #found-container::-webkit-scrollbar { width: 5px; }
+    #found-container::-webkit-scrollbar-thumb { background: #ddd; border-radius: 10px; }
   </style>
 </head>
 <body>
-  <h3 style="margin: 0 0 10px 0;">Twitch VOD Recover</h3>
-  <button id="runBtn">START NEW SCAN</button>
+  <h3>Twitch VOD Recovery</h3>
 
-  <div id="progress-container"><div id="progress-bar"></div></div>
-  <div id="metadata"></div>
-
-  <div id="found-container">
-    <small id="status-placeholder" style="color: #999;">Ready to scan...</small>
+  <div class="controls">
+    <button id="runBtn">START NEW SCAN</button>
+    <div id="progress-container"><div id="progress-bar"></div></div>
   </div>
 
-  <div id="copy-toast">Copied!</div>
+  <div id="metadata">
+    </div>
+
+  <div id="found-container">
+    <small id="status-placeholder" style="color: #bbb; text-align: center; margin-top: 5px;">Ready to scan...</small>
+  </div>
+
+  <div id="copy-toast">Copied to clipboard!</div>
   <script src="popup.js"></script>
 </body>
 </html>

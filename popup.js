@@ -122,7 +122,8 @@ runBtn.addEventListener('click', async () => {
 
 chrome.runtime.onMessage.addListener((message) => {
     if (message.action === "updateUI" && message.tabId === currentTabId) {
-        const { isScanning, isPaused, current, total, foundUrl, username, id, readableTime } = message.state;
+        // CHANGED: Accessing foundUrls (plural)
+        const { isScanning, isPaused, current, total, foundUrls, username, id, readableTime } = message.state;
 
         if (username) {
             metadataDiv.innerHTML = `
@@ -137,38 +138,50 @@ chrome.runtime.onMessage.addListener((message) => {
         }
         if (isScanning && !isPaused) {
             updateButtonUI("SCANNING");
-            if (!foundUrl && total > 0) foundContainer.innerHTML = `<small>Scanning (${current} / ${total})...</small>`;
-            else if (!foundUrl) foundContainer.innerHTML = `<small>Initializing scan...</small>`;
+            // CHANGED: Check length of array instead of string
+            if ((!foundUrls || foundUrls.length === 0) && total > 0) foundContainer.innerHTML = `<small>Scanning (${current} / ${total})...</small>`;
+            else if (!foundUrls || foundUrls.length === 0) foundContainer.innerHTML = `<small>Initializing scan...</small>`;
         } else if (isScanning && isPaused) {
             updateButtonUI("PAUSED");
-            if (!foundUrl) foundContainer.innerHTML = `<small style='color: #ff9800;'>Scan Paused</small>`;
+            if (!foundUrls || foundUrls.length === 0) foundContainer.innerHTML = `<small style='color: #ff9800;'>Scan Paused</small>`;
         } else {
             updateButtonUI("IDLE");
-            if (current >= total && total > 0 && !foundUrl) foundContainer.innerHTML = "<small style='color:red;'>No VOD found.</small>";
+            if (current >= total && total > 0 && (!foundUrls || foundUrls.length === 0)) foundContainer.innerHTML = "<small style='color:red;'>No VOD found.</small>";
         }
 
-        if (foundUrl && !document.getElementById('vod-link-display')) {
-            foundContainer.innerHTML = "<strong>Result Found:</strong>"; 
-            const row = document.createElement('div');
-            row.className = 'link-row';
-            const linkDisplay = document.createElement('span');
-            linkDisplay.id = 'vod-link-display';
-            linkDisplay.innerText = foundUrl;
-            linkDisplay.onclick = () => window.open(foundUrl, '_blank');
-            const copyBtn = document.createElement('button');
-            copyBtn.className = 'copy-icon-btn';
-            copyBtn.innerText = "COPY";
-            copyBtn.onclick = (e) => {
-                e.stopPropagation();
-                navigator.clipboard.writeText(foundUrl).then(() => {
-                    const toast = document.getElementById('copy-toast');
-                    toast.classList.add('show');
-                    setTimeout(() => toast.classList.remove('show'), 2000);
+        // UPDATED: Logic to display multiple URLs
+        if (foundUrls && foundUrls.length > 0) {
+            // Check if we already rendered the same number of links to prevent constant flashing
+            if (foundContainer.querySelectorAll('.link-row').length !== foundUrls.length) {
+                foundContainer.innerHTML = "<strong>Results Found:</strong>"; 
+                
+                foundUrls.forEach((url) => {
+                    const row = document.createElement('div');
+                    row.className = 'link-row';
+                    
+                    const linkDisplay = document.createElement('span');
+                    linkDisplay.className = 'vod-link-display-item'; // Class instead of ID
+                    linkDisplay.style.cursor = 'pointer';
+                    linkDisplay.innerText = url;
+                    linkDisplay.onclick = () => window.open(url, '_blank');
+
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'copy-icon-btn';
+                    copyBtn.innerText = "COPY";
+                    copyBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(url).then(() => {
+                            const toast = document.getElementById('copy-toast');
+                            toast.classList.add('show');
+                            setTimeout(() => toast.classList.remove('show'), 2000);
+                        });
+                    };
+
+                    row.appendChild(linkDisplay);
+                    row.appendChild(copyBtn);
+                    foundContainer.appendChild(row);
                 });
-            };
-            row.appendChild(linkDisplay);
-            row.appendChild(copyBtn);
-            foundContainer.appendChild(row);
+            }
         }
     }
 });

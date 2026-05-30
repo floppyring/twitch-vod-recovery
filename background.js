@@ -64,21 +64,22 @@ async function checkUrl(url) {
 
 async function processScan(tabId) {
     let state = tabStates[tabId];
-    if (!state || !state.isScanning || state.isPaused || state.foundUrl) return;
+    if (!state || !state.isScanning || state.isPaused) return;
+
+    if (!state.foundUrls) state.foundUrls = [];
 
     while (state.currentIndex < state.candidateUrls.length && state.isScanning && !state.isPaused) {
         const batch = state.candidateUrls.slice(state.currentIndex, state.currentIndex + state.batchSize);
         const results = await Promise.all(batch.map(checkUrl));
         
-        state.currentIndex += state.batchSize;
-        const validUrl = results.find(url => url !== null);
+        state.currentIndex = Math.min(state.currentIndex + state.batchSize, state.candidateUrls.length);
         
-        if (validUrl) {
-            state.foundUrl = validUrl;
-            state.isScanning = false;
-            broadcastStatus(tabId);
-            return;
+        // Find ALL matches in the batch instead of just the first
+        const matches = results.filter(url => url !== null);
+        if (matches.length > 0) {
+            state.foundUrls.push(...matches);
         }
+        
         broadcastStatus(tabId);
     }
 
@@ -101,7 +102,7 @@ function broadcastStatus(tabId) {
             isPaused: state.isPaused || false,
             current: state.currentIndex || 0,
             total: state.candidateUrls?.length || 0,
-            foundUrl: state.foundUrl || null,
+            foundUrls: state.foundUrls || [],
             username: state.username || "",
             id: state.id || "",
             readableTime: state.readableTime || ""
@@ -142,7 +143,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 candidateUrls: [...standardUrls, ...mutedUrls],
                 currentIndex: 0,
                 batchSize: config.batchSize,
-                foundUrl: null
+                foundUrls: []
             };
 
             broadcastStatus(tabId);
