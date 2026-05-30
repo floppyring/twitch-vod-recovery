@@ -77,36 +77,42 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
 });
 
 runBtn.addEventListener('click', async () => {
+    // Get our persistent status text element
+    const statusTextDiv = document.getElementById('scan-status-text');
+
     if (currentScanEngineState === "IDLE") {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         const domain = new URL(tab.url).hostname.replace('www.', '');
         const extractorFunc = extractors[domain];
 
         if (!extractorFunc) {
-            foundContainer.innerHTML = "<small style='color:red;'>Site not supported.</small>";
+            // Show the error in the status area instead of the results box
+            statusTextDiv.style.display = "block";
+            statusTextDiv.innerHTML = "<small style='color:red;'>Site not supported.</small>";
             return;
         }
 
         runBtn.disabled = true;
-        foundContainer.innerHTML = "<small style='color: #999;'>Parsing DOM...</small>";
+        
+        // CHANGED: Put "Parsing DOM" in the persistent status text area, NOT the results box
+        statusTextDiv.style.display = "block";
+        statusTextDiv.innerHTML = "<small style='color: #999;'>Parsing DOM...</small>";
 
         chrome.scripting.executeScript({
             target: { tabId: currentTabId },
             func: extractorFunc
         }, (results) => {
-            // 1. Check if scripting even returned a result
             if (!results || !results[0] || !results[0].result) {
-                foundContainer.innerHTML = "<small style='color:red;'>Failed to extract data: No result.</small>";
+                statusTextDiv.innerHTML = "<small style='color:red;'>Failed to extract data: No result.</small>";
                 runBtn.disabled = false;
                 return;
             }
 
             const data = results[0]?.result;
 
-            // 2. Check for our custom error messages
             if (data.error) {
                 console.error("Extraction error:", data.error);
-                foundContainer.innerHTML = `<small style='color:red;'>${data.error}</small>`;
+                statusTextDiv.innerHTML = `<small style='color:red;'>${data.error}</small>`;
                 runBtn.disabled = false;
                 return;
             }
@@ -122,46 +128,56 @@ runBtn.addEventListener('click', async () => {
 
 chrome.runtime.onMessage.addListener((message) => {
     if (message.action === "updateUI" && message.tabId === currentTabId) {
-        // CHANGED: Accessing foundUrls (plural)
         const { isScanning, isPaused, current, total, foundUrls, username, id, readableTime } = message.state;
+        const statusTextDiv = document.getElementById('scan-status-text');
 
         if (username) {
+            metadataDiv.style.display = 'block';
             metadataDiv.innerHTML = `
                 <div><span class="meta-label">Streamer:</span> ${username}</div>
                 <div><span class="meta-label">VOD ID:</span> ${id}</div>
                 <div><span class="meta-label">Start Time:</span> ${readableTime}</div>
             `;
         }
+
         if (total > 0) {
             progressContainer.style.display = 'block';
             progressBar.style.width = Math.floor((current / total) * 100) + "%";
         }
-        if (isScanning && !isPaused) {
-            updateButtonUI("SCANNING");
-            // CHANGED: Check length of array instead of string
-            if ((!foundUrls || foundUrls.length === 0) && total > 0) foundContainer.innerHTML = `<small>Scanning (${current} / ${total})...</small>`;
-            else if (!foundUrls || foundUrls.length === 0) foundContainer.innerHTML = `<small>Initializing scan...</small>`;
-        } else if (isScanning && isPaused) {
-            updateButtonUI("PAUSED");
-            if (!foundUrls || foundUrls.length === 0) foundContainer.innerHTML = `<small style='color: #ff9800;'>Scan Paused</small>`;
+
+        // Handles keeping the tracking text visible constantly during scans
+        if (isScanning) {
+            statusTextDiv.style.display = 'block';
+            if (isPaused) {
+                statusTextDiv.innerHTML = `<span style="color: #ff9800; font-weight: bold;">Scan Paused</span> (${current} / ${total})`;
+                updateButtonUI("PAUSED");
+            } else {
+                statusTextDiv.innerHTML = `Scanning... <strong>${current}</strong> / <strong>${total}</strong>`;
+                updateButtonUI("SCANNING");
+            }
         } else {
             updateButtonUI("IDLE");
-            if (current >= total && total > 0 && (!foundUrls || foundUrls.length === 0)) foundContainer.innerHTML = "<small style='color:red;'>No VOD found.</small>";
+            if (current >= total && total > 0) {
+                statusTextDiv.style.display = 'block';
+                statusTextDiv.innerHTML = foundUrls && foundUrls.length > 0 
+                    ? `<span style="color: #2e7d32; font-weight: bold;">Scan Complete!</span> Found ${foundUrls.length} matches.`
+                    : `<span style="color: red; font-weight: bold;">Scan Complete.</span> No VOD found.`;
+            } else {
+                statusTextDiv.style.display = 'none';
+            }
         }
 
-        // UPDATED: Logic to display multiple URLs
+        // Results mapping logic
         if (foundUrls && foundUrls.length > 0) {
-            // Check if we already rendered the same number of links to prevent constant flashing
             if (foundContainer.querySelectorAll('.link-row').length !== foundUrls.length) {
-                foundContainer.innerHTML = "<strong>Results Found:</strong>"; 
+                foundContainer.innerHTML = ""; // Clear background placeholders
                 
                 foundUrls.forEach((url) => {
                     const row = document.createElement('div');
                     row.className = 'link-row';
                     
                     const linkDisplay = document.createElement('span');
-                    linkDisplay.className = 'vod-link-display-item'; // Class instead of ID
-                    linkDisplay.style.cursor = 'pointer';
+                    linkDisplay.className = 'vod-link-display-item';
                     linkDisplay.innerText = url;
                     linkDisplay.onclick = () => window.open(url, '_blank');
 
@@ -182,6 +198,9 @@ chrome.runtime.onMessage.addListener((message) => {
                     foundContainer.appendChild(row);
                 });
             }
+        } else if (!isScanning) {
+            // Keeps container clean when empty and not processing
+            foundContainer.innerHTML = `<small style="color: #bbb; text-align: center; margin: auto;">Discovered streams will display here</small>`;
         }
     }
 });
